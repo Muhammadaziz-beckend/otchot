@@ -13,15 +13,11 @@ class User(AbstractUser):
         verbose_name_plural = "пользователи"
         ordering = ("-date_joined",)
 
-    username = models.CharField(
-        "User",
+    username = None
+    phone = PhoneNumberField(
+        _("номер телефона"),
         unique=True,
-        max_length=150,
     )
-    # phone = PhoneNumberField(
-    #     _("номер телефона"),
-    #     unique=True,
-    # )
     avatar = ResizedImageField(
         _("аватарка"),
         size=[500, 500],
@@ -42,8 +38,8 @@ class User(AbstractUser):
     )
     email = models.EmailField(_("email address"), blank=True, null=True)
 
-    USERNAME_FIELD = "username"
-    # USERNAME_FIELD = "phone"
+    # USERNAME_FIELD = "username"
+    USERNAME_FIELD = "phone"
     REQUIRED_FIELDS = []
 
     objects = UserNewManager()
@@ -55,4 +51,4 @@ class User(AbstractUser):
     get_full_name.fget.short_description = _("полное имя")
 
     def __str__(self):
-        return f"{str(self.username) or self.get_full_name}"
+        return f"{str(self.phone) or self.get_full_name}"

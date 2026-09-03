@@ -15,7 +15,7 @@ from .database import *
 from .cors import *
 from .media import *
 from .config_drf import *
-
+from .jwt import *
 
 # Application definition
 
@@ -35,8 +35,11 @@ INSTALLED_APPS = [
     "django_filters",
     "corsheaders",
     "drf_spectacular",
+    # "rest_framework_simplejwt",
+    # "rest_framework_simplejwt.token_blacklist",
     # apps
     "apps.account",
+    "apps.boss",
 ]
 
 MIDDLEWARE = [
@@ -51,7 +54,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "core.urls"
-
 
 
 WSGI_APPLICATION = "core.wsgi.application"
