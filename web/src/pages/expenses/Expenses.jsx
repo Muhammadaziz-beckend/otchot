@@ -3,6 +3,7 @@ import { listExpenses, createExpense, updateExpense, deleteExpense, listBosses, 
 import { isApiError, errorMessage, formatMoney, buildQuery } from "../../utils/apiHelpers.js";
 import Loader from "../../components/Loader/Loader.jsx";
 import Modal from "../../components/Modal/Modal.jsx";
+import Pagination from "../../components/Pagination/Pagination.jsx";
 
 // payer: "" - все, "fund" - только из фонда офиса, иначе id босса
 const emptyFilters = { payer: "", category: "", date_from: "", date_to: "" };
@@ -24,6 +25,7 @@ const Expenses = () => {
 
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
+  const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -40,7 +42,7 @@ const Expenses = () => {
   const load = () => {
     setLoading(true);
     setError("");
-    listExpenses(buildQuery(toApiFilters(appliedFilters))).then((res) => {
+    listExpenses(buildQuery({ ...toApiFilters(appliedFilters), page })).then((res) => {
       setLoading(false);
       if (isApiError(res)) {
         setError(errorMessage(res, "Не удалось загрузить расходы"));
@@ -51,16 +53,18 @@ const Expenses = () => {
     });
   };
 
-  useEffect(load, [appliedFilters]);
+  useEffect(load, [appliedFilters, page]);
 
   const applyFilters = (e) => {
     e.preventDefault();
     setAppliedFilters(filters);
+    setPage(1);
   };
 
   const resetFilters = () => {
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
+    setPage(1);
   };
 
   const openCreate = () => {
@@ -265,6 +269,7 @@ const Expenses = () => {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} count={count} onChange={setPage} />
         </>
       )}
 

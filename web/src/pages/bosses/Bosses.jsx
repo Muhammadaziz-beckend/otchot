@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { listBosses, createBoss, updateBoss, deleteBoss } from "../../api/boss.js";
-import { isApiError, errorMessage, formatMoney } from "../../utils/apiHelpers.js";
+import { listBosses, createBoss, updateBoss, deleteBoss, officeReport } from "../../api/boss.js";
+import { isApiError, errorMessage, formatMoney, buildQuery } from "../../utils/apiHelpers.js";
 import Loader from "../../components/Loader/Loader.jsx";
 import Modal from "../../components/Modal/Modal.jsx";
+import Pagination from "../../components/Pagination/Pagination.jsx";
 
 const emptyForm = { name: "", phone: "", share_percent: "", is_active: true };
 
 const Bosses = () => {
   const [bosses, setBosses] = useState([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [sharesTotal, setSharesTotal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -20,17 +24,21 @@ const Bosses = () => {
   const load = () => {
     setLoading(true);
     setError("");
-    listBosses().then((res) => {
+    Promise.all([listBosses(buildQuery({ page })), officeReport()]).then(([res, reportRes]) => {
       setLoading(false);
       if (isApiError(res)) {
         setError(errorMessage(res, "Не удалось загрузить список боссов"));
         return;
       }
       setBosses(res.data.results ?? res.data);
+      setCount(res.data.count ?? (res.data.results ?? res.data).length);
+      // shares_total_percent считается на бэкенде по всем активным боссам,
+      // а не только по текущей странице - иначе с пагинацией цифра была бы неверной.
+      if (!isApiError(reportRes)) setSharesTotal(Number(reportRes.data.shares_total_percent));
     });
   };
 
-  useEffect(load, []);
+  useEffect(load, [page]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -87,10 +95,6 @@ const Bosses = () => {
     load();
   };
 
-  const sharesTotal = bosses
-    .filter((b) => b.is_active)
-    .reduce((sum, b) => sum + Number(b.share_percent), 0);
-
   return (
     <div>
       <div className="page-header">
@@ -100,7 +104,7 @@ const Bosses = () => {
         </button>
       </div>
 
-      {Math.abs(sharesTotal - 100) > 0.01 && bosses.length > 0 && (
+      {sharesTotal !== null && Math.abs(sharesTotal - 100) > 0.01 && (
         <div className="alert alert-warning">
           Сумма долей активных боссов — {formatMoney(sharesTotal)}%, а должна быть 100%.
         </div>
@@ -110,6 +114,7 @@ const Bosses = () => {
       {loading && <Loader />}
 
       {!loading && (
+        <>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -156,6 +161,8 @@ const Bosses = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} count={count} onChange={setPage} />
+        </>
       )}
 
       {modalOpen && (

@@ -3,6 +3,7 @@ import { listDebts, settleDebt, listBosses } from "../../api/boss.js";
 import { isApiError, errorMessage, formatMoney, buildQuery } from "../../utils/apiHelpers.js";
 import Loader from "../../components/Loader/Loader.jsx";
 import Modal from "../../components/Modal/Modal.jsx";
+import Pagination from "../../components/Pagination/Pagination.jsx";
 
 const emptyFilters = { debtor: "", creditor: "", is_settled: "false" };
 
@@ -11,11 +12,13 @@ const today = () => new Date().toISOString().slice(0, 10);
 const Debts = () => {
   const [bosses, setBosses] = useState([]);
   const [debts, setDebts] = useState([]);
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
+  const [page, setPage] = useState(1);
 
   const [settleTarget, setSettleTarget] = useState(null);
   const [settleForm, setSettleForm] = useState({ amount: "", date: today(), comment: "" });
@@ -31,26 +34,29 @@ const Debts = () => {
   const load = () => {
     setLoading(true);
     setError("");
-    listDebts(buildQuery(appliedFilters)).then((res) => {
+    listDebts(buildQuery({ ...appliedFilters, page })).then((res) => {
       setLoading(false);
       if (isApiError(res)) {
         setError(errorMessage(res, "Не удалось загрузить долги"));
         return;
       }
       setDebts(res.data.results ?? res.data);
+      setCount(res.data.count ?? (res.data.results ?? res.data).length);
     });
   };
 
-  useEffect(load, [appliedFilters]);
+  useEffect(load, [appliedFilters, page]);
 
   const applyFilters = (e) => {
     e.preventDefault();
     setAppliedFilters(filters);
+    setPage(1);
   };
 
   const resetFilters = () => {
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
+    setPage(1);
   };
 
   const openSettle = (debt) => {
@@ -138,6 +144,7 @@ const Debts = () => {
       {loading && <Loader />}
 
       {!loading && (
+        <>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -183,6 +190,8 @@ const Debts = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} count={count} onChange={setPage} />
+        </>
       )}
 
       {settleTarget && (

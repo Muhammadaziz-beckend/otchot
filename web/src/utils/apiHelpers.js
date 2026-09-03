@@ -1,6 +1,9 @@
 // Get/Post/Put/Del ловят ошибку axios сами и возвращают её как обычное
 // значение (не бросают исключение) — эти хелперы разбирают такой ответ.
 
+// Должно совпадать с utils.paginations.PaginatorClass.page_size на бэкенде.
+export const PAGE_SIZE = 8;
+
 export const isApiError = (res) => !res || !!res.isAxiosError || res instanceof Error;
 
 export const errorMessage = (res, fallback = "Произошла ошибка") => {

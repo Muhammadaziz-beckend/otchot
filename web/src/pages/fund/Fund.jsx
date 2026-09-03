@@ -10,6 +10,7 @@ import {
 import { isApiError, errorMessage, formatMoney, buildQuery } from "../../utils/apiHelpers.js";
 import Loader from "../../components/Loader/Loader.jsx";
 import Modal from "../../components/Modal/Modal.jsx";
+import Pagination from "../../components/Pagination/Pagination.jsx";
 
 const emptyFilters = { boss: "", date_from: "", date_to: "" };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -18,12 +19,14 @@ const emptyForm = () => ({ boss: "", amount: "", date: today(), comment: "" });
 const Fund = () => {
   const [bosses, setBosses] = useState([]);
   const [contributions, setContributions] = useState([]);
+  const [count, setCount] = useState(0);
   const [fundBalance, setFundBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
+  const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -40,7 +43,7 @@ const Fund = () => {
   const load = () => {
     setLoading(true);
     setError("");
-    Promise.all([listContributions(buildQuery(appliedFilters)), officeReport()]).then(
+    Promise.all([listContributions(buildQuery({ ...appliedFilters, page })), officeReport()]).then(
       ([contribRes, reportRes]) => {
         setLoading(false);
         if (isApiError(contribRes)) {
@@ -48,21 +51,24 @@ const Fund = () => {
           return;
         }
         setContributions(contribRes.data.results ?? contribRes.data);
+        setCount(contribRes.data.count ?? (contribRes.data.results ?? contribRes.data).length);
         if (!isApiError(reportRes)) setFundBalance(reportRes.data.fund_balance);
       }
     );
   };
 
-  useEffect(load, [appliedFilters]);
+  useEffect(load, [appliedFilters, page]);
 
   const applyFilters = (e) => {
     e.preventDefault();
     setAppliedFilters(filters);
+    setPage(1);
   };
 
   const resetFilters = () => {
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
+    setPage(1);
   };
 
   const openCreate = () => {
@@ -244,6 +250,7 @@ const Fund = () => {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} count={count} onChange={setPage} />
         </>
       )}
 
