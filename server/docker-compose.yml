@@ -12,9 +12,10 @@ services:
     env_file:
       - .env
 
-
 volumes:
   sqlite_data:
+  - ./db.sqlite3:/app/db.sqlite3
+  
 
 
 # /// server configuration for production deployment (commented out) /// #
