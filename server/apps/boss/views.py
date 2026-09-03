@@ -52,9 +52,17 @@ def _boss_summary(boss: Boss, expenses_qs) -> dict:
     total_expenses = expenses_qs.aggregate(s=Sum("amount"))["s"] or Decimal("0")
     total_obligation = (total_expenses * boss.share_percent / Decimal("100")).quantize(Decimal("0.01"))
 
+    # Считаем именно остаток (amount - уже погашенное), а не исходную сумму
+    # долга — иначе частично погашенный долг всё ещё учитывался бы целиком.
     debts_qs = Debt.objects.filter(source_expense__in=expenses_qs)
-    owed_to_him = debts_qs.filter(creditor=boss, is_settled=False).aggregate(s=Sum("amount"))["s"] or Decimal("0")
-    owes_to_others = debts_qs.filter(debtor=boss, is_settled=False).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+    owed_to_him = sum(
+        (d.remaining_amount for d in debts_qs.filter(creditor=boss, is_settled=False)),
+        Decimal("0"),
+    )
+    owes_to_others = sum(
+        (d.remaining_amount for d in debts_qs.filter(debtor=boss, is_settled=False)),
+        Decimal("0"),
+    )
 
     return {
         "boss": boss,
