@@ -89,5 +89,5 @@ volumes:
   #     - redis
   #     - db
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
