@@ -192,9 +192,10 @@ const Bosses = () => {
               <span>Доля в офисе, %</span>
               <input
                 type="number"
-                step="0.01"
+                step="0.0001"
                 min="0"
                 max="100"
+                placeholder="например 33.3333"
                 value={form.share_percent}
                 onChange={(e) => setForm({ ...form, share_percent: e.target.value })}
                 required

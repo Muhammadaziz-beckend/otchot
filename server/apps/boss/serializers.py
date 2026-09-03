@@ -144,5 +144,5 @@ class OfficeReportSerializer(serializers.Serializer):
     total_expenses_personal = serializers.DecimalField(max_digits=14, decimal_places=2)
     total_contributions = serializers.DecimalField(max_digits=14, decimal_places=2)
     fund_balance = serializers.DecimalField(max_digits=14, decimal_places=2)
-    shares_total_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    shares_total_percent = serializers.DecimalField(max_digits=7, decimal_places=4)
     bosses = BossSummarySerializer(many=True)
