@@ -1,16 +1,20 @@
 """
-Бизнес-логика распределения расходов офиса и долгов между боссами.
+Бизнес-логика фонда офиса, расходов и долгов между боссами.
 
 Идея:
-    - Каждый босс владеет долей офиса (Boss.share_percent).
-    - Когда создаётся расход офиса (OfficeExpense), его сумма делится
-      между всеми активными боссами пропорционально их долям.
-    - Доля того, кто фактически оплатил расход, — это его собственные
-      деньги, потраченные на офис (не долг).
-    - Доли остальных боссов превращаются в долг (Debt) перед оплатившим:
-      он как бы одолжил им их часть.
+    - Боссы вкладывают деньги в общий фонд офиса (OfficeContribution).
+    - Расходы офиса обычно оплачиваются из этого фонда
+      (OfficeExpense.paid_by = None) — фонд просто уменьшается, ни один
+      босс лично ничего не платит и в минус не уходит, долгов не возникает.
+    - Если фонда не хватает (или кто-то из боссов решает оплатить лично,
+      в обход фонда), расход помечается paid_by = <конкретный босс>. Тогда
+      сумма делится между всеми активными боссами пропорционально их доле
+      (Boss.share_percent): доля оплатившего — его собственные деньги, а
+      доли остальных превращаются в долг (Debt) перед оплатившим — он как
+      бы одолжил им их часть.
 
-Пример: расход 100 сом оплатил Босс А, доли поровну (33.33/33.33/33.34).
+Пример: расход 100 сом, фонд пуст, оплатил лично Босс А, доли поровну
+(33.33/33.33/33.34).
     - Босс А потратил на офис свои 33.33 (это его расход).
     - Босс Б должен Боссу А 33.33.
     - Босс В должен Боссу А 33.34.
@@ -19,9 +23,10 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Boss, Debt, DebtSettlement, OfficeExpense
+from .models import Boss, Debt, DebtSettlement, OfficeContribution, OfficeExpense
 
 TWO_PLACES = Decimal("0.01")
 
@@ -60,11 +65,15 @@ def split_expense_debts(expense: OfficeExpense) -> list[Debt]:
     """
     Пересчитывает долги для расхода офиса.
 
-    Каждый активный босс, кроме оплатившего, получает долг перед
-    оплатившим на сумму своей доли от ``expense.amount``. Метод
-    идемпотентен: старые долги по этому расходу удаляются и создаются
-    заново — но только если по ним ещё не было погашений (иначе
-    пересчёт запрещён, чтобы не "потерять" уже возвращённые деньги).
+    Если расход оплачен из фонда офиса (``paid_by is None``), долгов
+    между боссами не возникает — фонд просто становится меньше.
+
+    Если расход оплатил лично конкретный босс, каждый активный босс,
+    кроме него, получает долг перед ним на сумму своей доли от
+    ``expense.amount``. Метод идемпотентен: старые долги по этому расходу
+    удаляются и создаются заново — но только если по ним ещё не было
+    погашений (иначе пересчёт запрещён, чтобы не "потерять" уже
+    возвращённые деньги).
     """
     existing = Debt.objects.filter(source_expense=expense)
     if DebtSettlement.objects.filter(debt__in=existing).exists():
@@ -74,6 +83,9 @@ def split_expense_debts(expense: OfficeExpense) -> list[Debt]:
             "корректирующий расход."
         )
     existing.delete()
+
+    if expense.paid_by_id is None:
+        return []  # оплачено из фонда офиса - долгов между боссами нет
 
     bosses = list(Boss.objects.filter(is_active=True).order_by("id"))
     if not bosses:
@@ -93,6 +105,26 @@ def split_expense_debts(expense: OfficeExpense) -> list[Debt]:
         )
         created.append(debt)
     return created
+
+
+def office_fund_balance(date_from=None, date_to=None) -> Decimal:
+    """
+    Текущий баланс общего фонда офиса: сумма всех взносов минус сумма
+    расходов, оплаченных из фонда (``paid_by is None``). Расходы,
+    оплаченные лично боссами в обход фонда, на баланс фонда не влияют.
+    """
+    contributions = OfficeContribution.objects.all()
+    fund_expenses = OfficeExpense.objects.filter(paid_by__isnull=True)
+    if date_from:
+        contributions = contributions.filter(date__gte=date_from)
+        fund_expenses = fund_expenses.filter(date__gte=date_from)
+    if date_to:
+        contributions = contributions.filter(date__lte=date_to)
+        fund_expenses = fund_expenses.filter(date__lte=date_to)
+
+    total_in = contributions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+    total_out = fund_expenses.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+    return total_in - total_out
 
 
 @transaction.atomic

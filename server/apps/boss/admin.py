@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Boss, Debt, DebtSettlement, OfficeExpense
+from .models import Boss, Debt, DebtSettlement, OfficeContribution, OfficeExpense
 
 
 @admin.register(Boss)
@@ -8,6 +8,13 @@ class BossAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "phone", "share_percent", "is_active")
     list_editable = ("share_percent", "is_active")
     search_fields = ("name", "phone")
+
+
+@admin.register(OfficeContribution)
+class OfficeContributionAdmin(admin.ModelAdmin):
+    list_display = ("id", "boss", "amount", "date", "comment")
+    list_filter = ("boss", "date")
+    date_hierarchy = "date"
 
 
 class DebtInline(admin.TabularInline):

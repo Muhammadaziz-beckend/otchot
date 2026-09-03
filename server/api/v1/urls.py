@@ -2,11 +2,17 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from apps.account.views.auth import Login
-from apps.boss.views import BossViewSet, DebtViewSet, OfficeExpenseViewSet
+from apps.boss.views import (
+    BossViewSet,
+    DebtViewSet,
+    OfficeContributionViewSet,
+    OfficeExpenseViewSet,
+)
 
 router = DefaultRouter()
 router.register("bosses", BossViewSet, basename="boss")
 router.register("office-expenses", OfficeExpenseViewSet, basename="office-expense")
+router.register("office-contributions", OfficeContributionViewSet, basename="office-contribution")
 router.register("debts", DebtViewSet, basename="debt")
 
 urlpatterns = [

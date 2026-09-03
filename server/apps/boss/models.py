@@ -38,14 +38,54 @@ class Boss(DataTimeCUAbstract):
         return f"{self.name} ({self.share_percent}%)"
 
 
+class OfficeContribution(DataTimeCUAbstract):
+    """
+    Взнос (вложение) босса в общий фонд офиса.
+
+    Из этого фонда в первую очередь оплачиваются расходы офиса
+    (``OfficeExpense.paid_by = None``) — пока в фонде хватает денег,
+    отдельные боссы не уходят в минус и долги между ними не возникают.
+    Долг образуется только если кто-то из боссов платит за офис лично
+    (``OfficeExpense.paid_by`` = конкретный босс), то есть в обход фонда.
+    """
+
+    boss = models.ForeignKey(
+        Boss,
+        on_delete=models.PROTECT,
+        related_name="contributions",
+        verbose_name="Кто вложил",
+    )
+    amount = models.DecimalField(
+        "Сумма взноса",
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    date = models.DateField("Дата взноса")
+    comment = models.CharField("Комментарий", max_length=255, blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Взнос в фонд офиса"
+        verbose_name_plural = "Взносы в фонд офиса"
+        ordering = ("-date", "-id")
+
+    def __str__(self):
+        return f"{self.boss.name} -> фонд офиса: {self.amount}"
+
+
 class OfficeExpense(DataTimeCUAbstract):
     """
-    Расход на офис, фактически оплаченный одним из боссов.
+    Расход на офис.
 
-    При сохранении расхода сумма автоматически делится между всеми
-    активными боссами согласно их доле: доля оплатившего босса считается
-    его собственным расходом, а доли остальных боссов превращаются в
-    записи ``Debt`` — долг перед оплатившим боссом.
+    Обычно оплачивается из общего фонда офиса (``paid_by = None``) —
+    деньгами, которые боссы туда вложили (``OfficeContribution``). В этом
+    случае долгов между боссами не возникает, фонд просто уменьшается.
+
+    Если же расход оплатил лично один из боссов в обход фонда
+    (``paid_by`` = этот босс), сумма автоматически делится между всеми
+    активными боссами согласно их доле: доля оплатившего считается его
+    собственным расходом, а доли остальных превращаются в записи
+    ``Debt`` — долг перед оплатившим боссом.
     """
 
     class Category(models.TextChoices):
@@ -75,7 +115,10 @@ class OfficeExpense(DataTimeCUAbstract):
         Boss,
         on_delete=models.PROTECT,
         related_name="expenses",
-        verbose_name="Кто оплатил",
+        verbose_name="Кто оплатил лично",
+        null=True,
+        blank=True,
+        help_text="Пусто — оплачено из фонда офиса. Указан босс — он оплатил лично, в обход фонда.",
     )
 
     class Meta:
@@ -84,7 +127,8 @@ class OfficeExpense(DataTimeCUAbstract):
         ordering = ("-date", "-id")
 
     def __str__(self):
-        return f"{self.title} — {self.amount} ({self.paid_by.name})"
+        payer = self.paid_by.name if self.paid_by_id else "фонд офиса"
+        return f"{self.title} — {self.amount} ({payer})"
 
 
 class Debt(DataTimeCUAbstract):

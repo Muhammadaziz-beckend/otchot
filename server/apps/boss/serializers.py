@@ -3,7 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from . import services
-from .models import Boss, Debt, DebtSettlement, OfficeExpense
+from .models import Boss, Debt, DebtSettlement, OfficeContribution, OfficeExpense
 
 
 class BossSerializer(serializers.ModelSerializer):
@@ -20,8 +20,25 @@ class BossSerializer(serializers.ModelSerializer):
         )
 
 
+class OfficeContributionSerializer(serializers.ModelSerializer):
+    boss_name = serializers.CharField(source="boss.name", read_only=True)
+
+    class Meta:
+        model = OfficeContribution
+        fields = (
+            "id",
+            "boss",
+            "boss_name",
+            "amount",
+            "date",
+            "comment",
+            "create_dt",
+            "update_dt",
+        )
+
+
 class OfficeExpenseSerializer(serializers.ModelSerializer):
-    paid_by_name = serializers.CharField(source="paid_by.name", read_only=True)
+    paid_by_name = serializers.SerializerMethodField()
     category_display = serializers.CharField(
         source="get_category_display", read_only=True
     )
@@ -41,6 +58,9 @@ class OfficeExpenseSerializer(serializers.ModelSerializer):
             "create_dt",
             "update_dt",
         )
+
+    def get_paid_by_name(self, obj):
+        return obj.paid_by.name if obj.paid_by_id else "Фонд офиса"
 
     def create(self, validated_data):
         expense = super().create(validated_data)
@@ -107,6 +127,7 @@ class DebtSettleActionSerializer(serializers.Serializer):
 
 class BossSummarySerializer(serializers.Serializer):
     boss = BossSerializer()
+    total_contributed = serializers.DecimalField(max_digits=14, decimal_places=2)
     total_paid = serializers.DecimalField(max_digits=14, decimal_places=2)
     total_obligation = serializers.DecimalField(max_digits=14, decimal_places=2)
     balance = serializers.DecimalField(max_digits=14, decimal_places=2)
@@ -119,5 +140,9 @@ class OfficeReportSerializer(serializers.Serializer):
     date_from = serializers.CharField(allow_null=True)
     date_to = serializers.CharField(allow_null=True)
     total_expenses = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_expenses_from_fund = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_expenses_personal = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_contributions = serializers.DecimalField(max_digits=14, decimal_places=2)
+    fund_balance = serializers.DecimalField(max_digits=14, decimal_places=2)
     shares_total_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
     bosses = BossSummarySerializer(many=True)
