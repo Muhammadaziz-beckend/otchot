@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -81,6 +82,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Раздача статики (админка, swagger UI) без DEBUG=True и без nginx.
+# django.conf.urls.static.static() в core/urls.py работает только при
+# DEBUG=True, поэтому после фикса DEBUG под .env статика бы перестала
+# отдаваться - whitenoise раздаёт её из STATIC_ROOT в любом режиме.
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Smart Parking",

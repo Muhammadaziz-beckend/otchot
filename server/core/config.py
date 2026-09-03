@@ -9,9 +9,12 @@ if not load_dotenv():
     raise Exception(".env Not Found")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["*"]
+# ALLOWED_HOSTS из .env через запятую, например:
+# ALLOWED_HOSTS=offis.maximumcomfort.pro,localhost,127.0.0.1
+_allowed_hosts = os.getenv("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()] or ["*"]
 AUTH_USER_MODEL = "account.User"
 
 LANGUAGE_CODE = "ru"

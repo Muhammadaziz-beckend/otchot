@@ -16,20 +16,27 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf import settings
-from django.conf.urls.static import static
 from django.shortcuts import redirect
-from django.urls import path,include
+from django.urls import path, include, re_path
+from django.views.static import serve
 from api.docs import schema_view_v1
 
 urlpatterns = [
     path("api/v1/",include('api.v1.urls')),
-    
+
     # swaggers
     path("api/v1/swagger/", schema_view_v1.with_ui("swagger", cache_timeout=0)),
-    
+
     path('admin/', admin.site.urls),
     path('',lambda r: redirect('admin/')),
 ]
 
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Статику раздаёт whitenoise (см. MIDDLEWARE/STATICFILES_STORAGE) - она
+# работает независимо от DEBUG. А вот media (аватарки) whitenoise не
+# трогает, а django.conf.urls.static.static() отдаёт их только при
+# DEBUG=True, поэтому здесь раздаём media явно, без привязки к DEBUG.
+# Для реального прод-трафика лучше отдавать media через nginx/S3, но
+# для этого проекта этого достаточно.
+urlpatterns += [
+    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+]
